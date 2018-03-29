@@ -1,0 +1,91 @@
+datafacer Csv {
+	data Csvfile ("data/vent_2m_not_null.csv")
+	match CsvData {
+		nom : "Nom"
+		poste : "Poste"		
+		date : "Date"
+		vitesse_ms : "Vitesse_m.s-1"
+	}
+}
+
+datafacer CsvOut {
+	data Csvfile ("output/CSV/vent_2m_output.csv")
+	match CsvData {
+		nom : "Nom"
+		poste : "Poste"
+		date : "Date"
+		vitesse_ms : "Vitesse_ms"
+	}
+}
+
+entity CsvData {
+	property String nom
+	property String poste
+	property String date
+	property Double vitesse_ms 
+	
+	service interpolation () {
+		
+	}
+		
+}
+
+scenario InterpolationCSV {
+	removeDir("output/CSV/") // On efface les sorties précédentes pour ne pas qu'elles s'accumulent
+	let csv = new Csv
+	let dataCsv = csv.readAll
+	
+		/// INTERPOLATION TEMPORELLE LORSQUE VALEURS MANQUANTES
+	
+	for (i:0..(dataCsv.size-1)){
+		
+		if (dataCsv.get(i).vitesse_ms == 0.0) {
+			let j = i-1
+			while (dataCsv.get(j).vitesse_ms == 0.0 && j < i) {
+				j --
+				println("j: " + j)
+			}
+			/*if (j > 1) {
+				j = 0
+			}*/
+			
+			let k = i+1
+			while (dataCsv.get(k).vitesse_ms == 0.0 && k <= (dataCsv.size-1)){
+				k ++
+				println("k: " + k)
+			}					
+			dataCsv.get(i).vitesse_ms = dataCsv.get(j).vitesse_ms + ((dataCsv.get(k).vitesse_ms)-(dataCsv.get(j).vitesse_ms))/(k-j)		
+		}
+	}
+	
+		/// CREATION D'UN NOUVEAU CSV POUR CHAQUE STATION
+	
+	let id_poste = dataCsv.get(0).poste
+	println("poste: "+ id_poste)
+	let csvOut = new CsvOut
+	csvOut.setFileName("output/CSV/"+id_poste+".csv")
+	
+	for (i:0..(dataCsv.size-1)){
+		
+		
+		if (i < (dataCsv.size-1) && dataCsv.get(i).poste == id_poste){
+			csvOut.append(dataCsv.get(i))
+			println("ajouté: " + dataCsv.get(i))
+		}
+			
+		if (i == (dataCsv.size-1) && dataCsv.get(i).poste == dataCsv.get(i-1).poste){
+			csvOut.append(dataCsv.get(i))
+			println("ajouté: " + dataCsv.get(i))
+		}	
+							
+		if (dataCsv.get(i).poste != id_poste){
+			id_poste = dataCsv.get(i).poste
+			csvOut.setFileName("output/CSV/"+ id_poste + ".csv")
+			println("csvOut: " + id_poste)
+			csvOut.append(dataCsv.get(i))	
+			println("ajouté: " + dataCsv.get(i))								
+		} 
+	}
+	println("Namasté.")	
+}
+
